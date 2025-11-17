@@ -3,11 +3,41 @@ import torch.nn as nn
 from typing_extensions import Dict, Any
 
 GPT_CONFIG_124M = {
-    'vocab_size': 50527, # 词汇表大小
+    'vocab_size': 50257, # 词汇表大小
     'context_length': 1024, # 上下文维度
     'emb_dim': 768, # 嵌入维度
     'n_heads': 12, # 注意力头的数量
     'n_layers': 12, # 层数
+    'drop_rate': 0.1, # 暂退率
+    'qkv_bias': False # Q、K、V偏置
+}
+
+GPT_CONFIG_MEDIUM = {
+    'vocab_size': 50257, # 词汇表大小
+    'context_length': 1024, # 上下文维度
+    'emb_dim': 1024, # 嵌入维度
+    'n_heads': 16, # 注意力头的数量
+    'n_layers': 24, # 层数
+    'drop_rate': 0.1, # 暂退率
+    'qkv_bias': False # Q、K、V偏置
+}
+
+GPT_CONFIG_LARGE = {
+    'vocab_size': 50257, # 词汇表大小
+    'context_length': 1024, # 上下文维度
+    'emb_dim': 1280, # 嵌入维度
+    'n_heads': 20, # 注意力头的数量
+    'n_layers': 36, # 层数
+    'drop_rate': 0.1, # 暂退率
+    'qkv_bias': False # Q、K、V偏置
+}
+
+GPT_CONFIG_XL = {
+    'vocab_size': 50257, # 词汇表大小
+    'context_length': 1024, # 上下文维度
+    'emb_dim': 1600, # 嵌入维度
+    'n_heads': 25, # 注意力头的数量
+    'n_layers': 48, # 层数
     'drop_rate': 0.1, # 暂退率
     'qkv_bias': False # Q、K、V偏置
 }
@@ -23,8 +53,8 @@ class GPTModel2(nn.Module):
         self.token_embeddings    = nn.Embedding(cfg['vocab_size'], cfg['emb_dim']) # 词嵌入
         self.position_embeddings = nn.Embedding(cfg['context_length'], cfg['emb_dim']) # 位置嵌入
         self.dropout_embeddings  = nn.Dropout(cfg['drop_rate']) # 暂退层
-        self.transformer_blocks  = nn.Sequential(*[TransformerBlock(cfg) for _ in range(cfg['n_layers'])]) # Transformer块
-        self.final_norm          = LayerNorm() # 最后一层层归一化
+        self.transformer_blocks  = nn.Sequential(*[TransformerBlock(cfg) for _ in range(cfg['n_layers'])]) # Transformer块（使用12次、12层transformer block）
+        self.final_norm          = LayerNorm(cfg) # 最后一层层归一化
         self.out_head            = nn.Linear(cfg['emb_dim'], cfg['vocab_size'], bias=False) # 线性输出层
     
     def forward(self, in_idx: torch.Tensor) -> torch.Tensor:
@@ -104,11 +134,11 @@ class FeedForwardLayer(nn.Module):
             cfg (Dict[str, Any]): _description_
         """
         super().__init__()
-        self.layers = nn.Sequential([
-            nn.Linear(cfg['emb_dim'], cfg['emb_dim']),
+        self.layers = nn.Sequential(
+            nn.Linear(cfg['emb_dim'], 4*cfg['emb_dim']),
             GELU(),
-            nn.Linear(cfg['emb_dim'], cfg['emb_dim'])
-        ])
+            nn.Linear(4*cfg['emb_dim'], cfg['emb_dim'])
+        )
         
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """前向传播
@@ -281,3 +311,21 @@ class MultiHeadAttention(nn.Module):
         
         # 6.最终输出前需要再经过一个线性层
         return self.out_layer(context_vector)
+    
+torch.manual_seed(123)
+model = GPTModel2(cfg=GPT_CONFIG_124M)
+
+total_params = sum(p.numel() for p in model.parameters())
+print(f"Total number of parameters: {total_params}")
+print("Token Embeddings Layer Shape:", model.token_embeddings.weight.shape)
+print("Output Layer Shape:", model.out_head.weight.shape)
+
+batch = torch.tensor([
+    [6109, 3626, 6100, 345],
+    [6109, 1110, 6622, 257]
+])
+
+out = model(batch)
+print("Input Batch:\n", batch)
+print("Output Shape:\n", out.shape)
+print(out)
