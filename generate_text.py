@@ -1,5 +1,7 @@
 import torch
 import torch.nn as nn
+from GPTModel import GPTModel2, GPT_CONFIG_124M
+import tiktoken
 
 def generate_text_simple(model: nn.Module, idx: torch.Tensor, max_new_tokens: int, context_size: int) -> torch.Tensor:
     """LLM 文本生成
@@ -31,3 +33,26 @@ def generate_text_simple(model: nn.Module, idx: torch.Tensor, max_new_tokens: in
         idx = torch.cat((idx, idx_next), dim=-1)
     
     return idx
+
+# start_context = "Hello, I am"
+# tokenizer = tiktoken.get_encoding("gpt2")
+# encoded = tokenizer.encode(start_context)
+# print("encoded:", encoded)
+# encoded_tensor = torch.tensor(encoded).unsqueeze(0) # 添加维度（batch, n_tokens）,unsqueeze是在张量为0的位置添加一个大小为1的维度
+# print("encoded_tensor.shape:", encoded_tensor.shape)
+
+# model = GPTModel2(GPT_CONFIG_124M)
+# model.eval() # 禁用诸如dropout等只在训练期间使用的随机组件
+
+# out = generate_text_simple(
+#     model=model,
+#     idx=encoded_tensor,
+#     max_new_tokens=6,
+#     context_size=GPT_CONFIG_124M['context_length']
+# )
+
+# print("Output:", out)
+# print("Output length:", len(out[0]))
+
+# decode_text = tokenizer.decode(out.squeeze(0).tolist())
+# print(decode_text)

@@ -325,7 +325,7 @@ batch = torch.tensor([
     [6109, 1110, 6622, 257]
 ])
 
-out = model(batch)
+out: torch.Tensor = model(batch)
 print("Input Batch:\n", batch)
 print("Output Shape:\n", out.shape)
 print(out)
