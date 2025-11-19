@@ -312,20 +312,20 @@ class MultiHeadAttention(nn.Module):
         # 6.最终输出前需要再经过一个线性层
         return self.out_layer(context_vector)
     
-torch.manual_seed(123)
-model = GPTModel2(cfg=GPT_CONFIG_124M)
+# torch.manual_seed(123)
+# model = GPTModel2(cfg=GPT_CONFIG_124M)
 
-total_params = sum(p.numel() for p in model.parameters())
-print(f"Total number of parameters: {total_params}")
-print("Token Embeddings Layer Shape:", model.token_embeddings.weight.shape)
-print("Output Layer Shape:", model.out_head.weight.shape)
+# total_params = sum(p.numel() for p in model.parameters())
+# print(f"Total number of parameters: {total_params}")
+# print("Token Embeddings Layer Shape:", model.token_embeddings.weight.shape)
+# print("Output Layer Shape:", model.out_head.weight.shape)
 
-batch = torch.tensor([
-    [6109, 3626, 6100, 345],
-    [6109, 1110, 6622, 257]
-])
+# batch = torch.tensor([
+#     [6109, 3626, 6100, 345],
+#     [6109, 1110, 6622, 257]
+# ])
 
-out: torch.Tensor = model(batch)
-print("Input Batch:\n", batch)
-print("Output Shape:\n", out.shape)
-print(out)
+# out: torch.Tensor = model(batch)
+# print("Input Batch:\n", batch)
+# print("Output Shape:\n", out.shape)
+# print(out)
