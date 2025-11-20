@@ -1,9 +1,10 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 import tiktoken
+from tiktoken.core import Encoding
 
 class GPTDatasetV1(Dataset):
-    def __init__(self, txt: str, tokenizer: tiktoken, max_length: int, stride: int):
+    def __init__(self, txt: str, tokenizer: Encoding, max_length: int, stride: int):
         """从数据集分词并生成token（词元ID）包括input和target两组，使用滑动窗口创建input_token_ids以及target_token_ids
 
         Args:
