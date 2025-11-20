@@ -253,13 +253,87 @@ def train_model_simple(
             tokens_seen += input_batch.numel()
             global_step += 1
             # 评估
-        
-        # 每轮迭代结束后打印一个文本样本
+            if global_step % eval_freq == 0:
+                train_loss, valid_loss = evaluate_model(model, train_loader, valid_loader, device, eval_iter)
+                train_losses.append(train_loss)
+                valid_losses.append(valid_loss)
+                track_tokens_seen.append(tokens_seen)
+                print(
+                    f"Ep {epoch+1} (Step {global_step:06d})"
+                    f"Train Loss {train_loss:.3f}"
+                    f"Valid Loss {valid_loss:.3f}"
+                )
+            # 每轮迭代结束后打印一个文本样本
+            generate_and_print_sample(model, tokenizer, device, start_context)
     
     return train_losses, valid_losses, track_tokens_seen
-            
+
+def evaluate_model(model: nn.Module, train_loader: DataLoader, valid_loader: DataLoader, device: torch.device, eval_iter) -> tuple[torch.Tensor, torch.Tensor]:
+    """打印训练集和验证集的损失，以便评估训练是否改善了模型性能
+
+    Args:
+        model (nn.Module): _description_
+        train_loader (DataLoader): _description_
+        valid_loader (DataLoader): _description_
+        device (torch.device): _description_
+        eval_iter (_type_): _description_
+    """
+    # 评估阶段禁用dropout以产出稳定且可复现的结果
+    model.eval()
+    with torch.no_grad():
+        train_loss = calc_loss_loader(train_loader, model, device, num_batchs=eval_iter)
+        valid_loss = calc_loss_loader(valid_loader, model, device, num_batchs=eval_iter)
+    # 评估结束重启模型训练模式
+    model.train()
+    return train_loss, valid_loss
+
+def generate_and_print_sample(model: GPTModel2, tokenizer: Encoding, device: torch.device, start_context: str) -> None:
+    """用于跟踪模型在训练中是否有改进
+
+    Args:
+        model (nn.Module): _description_
+        tokenizer (Encoding): _description_
+        device (torch.device): _description_
+        start_context (_type_): _description_
+    """
+    model.eval()
+    # 上下文长度根据模型位置嵌入层维度设置
+    context_size = model.position_embeddings.weight.shape[0]
+    # 以文本片段作为输入，先将其转换为词元ID
+    encoded = text_to_token_ids(start_context, tokenizer).to(device)
+    with torch.no_grad():
+        # 启用模型逐词生成文本（最多生成50个新token），根据位置嵌入控制输入上下文长度（tokens长度）（softmax+argmax）
+        token_ids = generate_text_simple(
+            model=model,
+            idx=encoded,
+            max_new_tokens=50,
+            context_size=context_size
+        )
+    # 预测词元ID转文本
+    decoded_text = token_ids_to_text(token_ids, tokenizer)
+    print(decoded_text.replace("\n", " "))
+    model.train()
+
+torch.manual_seed(123)
+model = GPTModel2(GPT_CONFIG_124M)
+model.to(device=device)
+
 optimizer = torch.optim.AdamW(
     model.parameters(),
     lr=0.0004,
     weight_decay=0.1
+)
+
+num_epochs = 10
+train_losses, valid_losses, tokens_seen = train_model_simple(
+    model,
+    train_loader,
+    valid_loader,
+    optimizer,
+    device,
+    num_epochs,
+    eval_freq=5,
+    eval_iter=5,
+    start_context="Every effort moves you",
+    tokenizer=tokenizer
 )
