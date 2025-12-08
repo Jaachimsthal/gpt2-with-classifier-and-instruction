@@ -337,3 +337,36 @@ train_losses, valid_losses, tokens_seen = train_model_simple(
     start_context="Every effort moves you",
     tokenizer=tokenizer
 )
+
+# 绘制图表
+import matplotlib.pyplot as plt
+from matplotlib.ticker import MaxNLocator
+def plot_losses(epoches_seen, token_seen, train_losses, val_losse):
+    fig, ax1 = plt.subplots(figsize=(5,3))
+    ax1.plot(epoches_seen, train_losses, label="Training loss")
+    ax1.plot(epoches_seen, val_losse, linestyle="-.", label="Validation loss")
+    
+    ax1.set_xlabel("Epochs")
+    ax1.set_ylabel("Loss")
+    ax1.legend(loc="upper right")
+    ax1.xaxis.set_major_locator(MaxNLocator(integer=True))
+    ax2 = ax1.twiny() # 创建共享同一个y轴的第二个x轴
+    ax2.plot(token_seen, train_losses, alpha=0) # 对其刻度线的隐藏图标
+    ax2.set_xlabel("Token Seen")
+    fig.tight_layout()
+    plt.show()
+    
+epochs_tensor = torch.linspace(0, num_epochs, len(train_losses))
+plot_losses(epochs_tensor, tokens_seen, train_losses, valid_losses)
+
+model.to("cpu")
+model.eval()
+tokenizer = tiktoken.get_encoding("gpt2")
+token_ids = generate_text_simple(
+    model=model,
+    idx=text_to_token_ids("Every effort moves you", tokenizer=tokenizer),
+    max_new_tokens=25,
+    context_size=GPT_CONFIG_124M['context_length']
+)
+
+print("Output text:\n", token_ids_to_text(token_ids=token_ids, tokenizer=tokenizer))
