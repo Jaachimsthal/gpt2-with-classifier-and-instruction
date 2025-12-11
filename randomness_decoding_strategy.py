@@ -53,3 +53,19 @@ ax.set_xticklabels(vocab.keys(), rotation=90)
 ax.legend()
 plt.tight_layout()
 plt.show()
+
+# 先从预测结果中，取出分数最高的前3个值（降序）以及对应值的位置
+# topk函数用于从张量中选取最大（或最小）的k个元素，并返回这些元素的值和对应的索引
+top_k = 3
+top_logits, top_pos = torch.topk(next_token_logits, top_k)
+print("Top Logits:", top_logits)
+print("Top Positions:", top_pos)
+# 随后使用PyTorch的where函数，将低于前三个词元中最低logits值得词元的logits值设置为负无穷（-inf）
+# where函数用于根据条件从两个张量中选择元素
+new_logits = torch.where(
+    condition=next_token_logits < top_logits[-1],
+    input=torch.tensor(float('-inf')), # 将低于topk的logits值赋值-inf
+    other=next_token_logits # 保留所有其他词元的原始logits值
+)
+# 最后应用softmax函数将这些值转换为下一个词元的概率
+topk_probas = torch.softmax(new_logits, dim=0)
