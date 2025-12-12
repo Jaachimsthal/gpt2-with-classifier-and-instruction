@@ -1,6 +1,8 @@
 import torch
 import torch.nn as nn
 from typing_extensions import Dict, Any
+import tiktoken
+from tiktoken.core import Encoding
 
 GPT_CONFIG_124M = {
     'vocab_size': 50257, # 词汇表大小
@@ -311,6 +313,87 @@ class MultiHeadAttention(nn.Module):
         
         # 6.最终输出前需要再经过一个线性层
         return self.out_layer(context_vector)
+
+def generate(model: nn.Module, idx: torch.Tensor, max_new_tokens: int, context_size: int, temperature=0.0, top_k = None, eos_id=None) -> torch.Tensor:
+    """支持温度缩放和top-k的词元生成
+
+    Args:
+        model (torch.Module): LLM
+        idx (torch.Tensor): 初始上下文
+        max_new_tokens (int): 允许生成的最大token数
+        context_size (int): 上下文长度
+        temperature (float, optional): 温度系数. Defaults to 0.0.
+        top_k (_type_, optional): top-k. Defaults to None.
+        eos_id (_type_, optional): 停止词元. Defaults to None.
+
+    Returns:
+        torch.Tensor: 生成结果
+    """
+    for _ in range(max_new_tokens):
+        # 根据允许生成的最大上下文长度遍历，确定可以生成的词元数量
+        idx_cond = idx[:, -context_size:] # 根据上下文限制切分输入token
+        with torch.no_grad():
+            logits: torch.Tensor = model(idx_cond)
+        logits = logits[:, -1, :] # 只获取最后一个token（LLM会针对输入序列的每一个词元生成一组logits向量，对于下一个词预测只需要获取最后一个向量即可）
+        if top_k is not None:
+            # 使用Top-k采用筛选logits
+            top_logits, _ = torch.topk(logits, top_k)
+            min_val = top_logits[:, -1] # top-k中的最小词元
+            logits = torch.where(logits < min_val, torch.tensor(float('-inf')).to(logits.device), logits) # top-k掩码
+        if temperature > 0.0:
+            # 使用温度缩放
+            logits = logits / temperature # 温度缩放
+            probs = torch.softmax(logits, dim=-1)
+            idx_next = torch.multinomial(probs, num_samples=1) # 概率采样
+        else:
+            # 使用贪心解码
+            probs = torch.softmax(logits, dim=-1)
+            idx_next = torch.argmax(probs, dim=-1, keepdim=True)
+        if idx_next == eos_id:
+            # 如果遇到序列结束词元则提前停止生成
+            break
+        idx = torch.cat((idx, idx_next), dim=-1)
+    return idx
+
+def text_to_token_ids(text: str, tokenizer: Encoding) -> torch.Tensor:
+    """文本转token_ids
+
+    Args:
+        text (str): 文本
+        tokenizer (Encoding): 编码器
+
+    Returns:
+        torch.Tensor: token ids张量
+    """
+    encoded = tokenizer.encode(text=text, allowed_special={'<|endoftext|>'})
+    encoded_tensor = torch.tensor(encoded).unsqueeze(0)
+    return encoded_tensor
+
+def token_ids_to_text(token_ids: torch.Tensor, tokenizer: Encoding) -> str:
+    """token_ids张量转文本
+
+    Args:
+        token_ids (torch.Tensor): 词元ID张量
+        tokenizer (Encoding): 解码器
+
+    Returns:
+        str: 文本
+    """
+    return tokenizer.decode(token_ids.squeeze(0).tolist())
+
+tokenizer = tiktoken.get_encoding("gpt2")
+
+torch.manual_seed(123)
+token_ids = generate(
+    model=GPTModel2(cfg=GPT_CONFIG_124M),
+    idx=text_to_token_ids("Every effort moves you", tokenizer=tokenizer),
+    max_new_tokens=15,
+    context_size=GPT_CONFIG_124M['context_length'],
+    top_k=25,
+    temperature=1.4
+)
+
+print("Output text:\n", token_ids_to_text(token_ids=token_ids, tokenizer=tokenizer))
     
 # torch.manual_seed(123)
 # model = GPTModel2(cfg=GPT_CONFIG_124M)
