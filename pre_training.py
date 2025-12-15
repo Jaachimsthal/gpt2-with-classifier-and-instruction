@@ -6,6 +6,16 @@ from generate_text import generate_text_simple
 from tiktoken.core import Encoding
 from GPTDataset import create_dataloader_v1
 
+import urllib.request
+
+url = (
+    "https://raw.githubusercontent.com/rasbt/"
+    "LLMs-from-scratch/main/ch05/"
+    "01_main-chapter-code/gpt_download.py"
+)
+filename = url.split("/")[-1]
+urllib.request.urlretrieve(url, filename)
+
 print(torch.cuda.is_available())
 
 # 模型生成文本

@@ -381,6 +381,10 @@ def token_ids_to_text(token_ids: torch.Tensor, tokenizer: Encoding) -> str:
     """
     return tokenizer.decode(token_ids.squeeze(0).tolist())
 
+# 加载GPT-2参数
+from gpt_download import download_and_load_gpt2
+settings, params = download_and_load_gpt2(model_size="124M", models_dir="gpt2")
+
 tokenizer = tiktoken.get_encoding("gpt2")
 
 torch.manual_seed(123)
