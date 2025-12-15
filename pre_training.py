@@ -6,6 +6,8 @@ from generate_text import generate_text_simple
 from tiktoken.core import Encoding
 from GPTDataset import create_dataloader_v1
 
+print(torch.cuda.is_available())
+
 # 模型生成文本
 torch.manual_seed(123)
 GPT_CONFIG_124M['context_length'] = 256 # 从124M的配置中将context_length减少到256个词元
