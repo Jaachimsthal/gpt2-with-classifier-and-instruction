@@ -3,6 +3,7 @@ import torch.nn as nn
 from typing_extensions import Dict, Any
 import tiktoken
 from tiktoken.core import Encoding
+import numpy as np
 
 GPT_CONFIG_124M = {
     'vocab_size': 50257, # 词汇表大小
@@ -380,6 +381,37 @@ def token_ids_to_text(token_ids: torch.Tensor, tokenizer: Encoding) -> str:
         str: 文本
     """
     return tokenizer.decode(token_ids.squeeze(0).tolist())
+
+def assign(left: torch.Tensor, right: np.ndarray) -> torch.Tensor:
+    """比较模型层形状与需要加载的参数形状是否一致
+
+    Args:
+        left (torch.Tensor): _description_
+        right (np.ndarray): _description_
+
+    Raises:
+        ValueError: _description_
+
+    Returns:
+        torch.Tensor: _description_
+    """
+    if left.shape != right.shape:
+        raise ValueError(f"Shape mismatch. Left:{left.shape}", f"Right:{right.shape}")
+    return torch.nn.Parameter(torch.tensor(right))
+
+def load_weights_into_gpt(gpt: GPTModel2, params: dict[str, list[dict]]) -> None:
+    """加载权重到GPT模型中
+
+    Args:
+        gpt (GPTModel2): _description_
+        params (dict[str, list[dict]]): _description_
+    """
+    gpt.position_embeddings.weight = assign(gpt.position_embeddings.weight, params['wpe'])
+    gpt.token_embeddings.weight = assign(gpt.token_embeddings.weight, params['wte'])
+    
+    for b in range(len(params['blocks'])):
+        # 遍历模型中的每一个Transformer块
+        q_w, k_w, v_w = np.split() # np.split函数用于将注意力和偏置权重分为3个部分，分别用于查询组件、键组件以及值组件
 
 # 加载GPT-2参数
 from gpt_download import download_and_load_gpt2
