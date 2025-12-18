@@ -410,8 +410,8 @@ def load_weights_into_gpt(gpt: GPTModel2, params: dict[str, list[dict]]) -> None
     gpt.token_embeddings.weight = assign(gpt.token_embeddings.weight, params['wte'])
     
     for b in range(len(params['blocks'])):
-        # 遍历模型中的每一个Transformer块
-        q_w, k_w, v_w = np.split() # np.split函数用于将注意力和偏置权重分为3个部分，分别用于查询组件、键组件以及值组件
+        # np.split函数用于将注意力和偏置权重分为3个部分，分别用于查询组件、键组件以及值组件
+        q_w, k_w, v_w = np.split((params['blocks'][b]['attn']['c_attn'])['w'], 3, axis=-1)
 
 # 加载GPT-2参数
 from gpt_download import download_and_load_gpt2
