@@ -367,7 +367,7 @@ def text_to_token_ids(text: str, tokenizer: Encoding) -> torch.Tensor:
         torch.Tensor: token ids张量
     """
     encoded = tokenizer.encode(text=text, allowed_special={'<|endoftext|>'})
-    encoded_tensor = torch.tensor(encoded).unsqueeze(0)
+    encoded_tensor = torch.tensor(encoded).unsqueeze(0).to("cuda")
     return encoded_tensor
 
 def token_ids_to_text(token_ids: torch.Tensor, tokenizer: Encoding) -> str:
@@ -412,6 +412,88 @@ def load_weights_into_gpt(gpt: GPTModel2, params: dict[str, list[dict]]) -> None
     for b in range(len(params['blocks'])):
         # np.split函数用于将注意力和偏置权重分为3个部分，分别用于查询组件、键组件以及值组件
         q_w, k_w, v_w = np.split((params['blocks'][b]['attn']['c_attn'])['w'], 3, axis=-1)
+        # 参数管理：Transformer Blocks 中 QueryLayer、KeyLayer、ValueLayer 的 Weights Params
+        gpt.transformer_blocks[b].multi_head_attention.query_layer.weight = assign(
+            gpt.transformer_blocks[b].multi_head_attention.query_layer.weight,
+            q_w.T
+        )
+        gpt.transformer_blocks[b].multi_head_attention.key_layer.weight = assign(
+            gpt.transformer_blocks[b].multi_head_attention.key_layer.weight,
+            k_w.T
+        )
+        gpt.transformer_blocks[b].multi_head_attention.value_layer.weight = assign(
+            gpt.transformer_blocks[b].multi_head_attention.value_layer.weight,
+            v_w.T
+        )
+        
+        # np.split函数用于将注意力和偏置权重分为3个部分，分别用于查询组件、键组件以及值组件
+        q_b, k_b, v_b = np.split((params['blocks'][b]['attn']['c_attn'])['b'], 3, axis=-1)
+        # 参数管理：Transformer Blocks 中 QueryLayer、KeyLayer、ValueLayer 的 Bias Params
+        gpt.transformer_blocks[b].multi_head_attention.query_layer.bias = assign(
+            gpt.transformer_blocks[b].multi_head_attention.query_layer.bias,
+            q_b
+        )
+        gpt.transformer_blocks[b].multi_head_attention.key_layer.bias = assign(
+            gpt.transformer_blocks[b].multi_head_attention.key_layer.bias,
+            k_b
+        )
+        gpt.transformer_blocks[b].multi_head_attention.value_layer.bias = assign(
+            gpt.transformer_blocks[b].multi_head_attention.value_layer.bias,
+            v_b
+        )
+        
+        # 参数管理：Transformer Blocks 中 OutLayer Weight And Bias
+        gpt.transformer_blocks[b].multi_head_attention.out_layer.weight = assign(
+            gpt.transformer_blocks[b].multi_head_attention.out_layer.weight,
+            params['blocks'][b]['attn']['c_proj']['w'].T
+        )
+        gpt.transformer_blocks[b].multi_head_attention.out_layer.bias = assign(
+            gpt.transformer_blocks[b].multi_head_attention.out_layer.bias,
+            params['blocks'][b]['attn']['c_proj']['b'].T
+        )
+        
+        # 参数管理：Transformer Blocks 中 FeedForward Layer Weight（注意两层Linear） And Bias
+        gpt.transformer_blocks[b].feed_forward.layers[0].weight = assign(
+            gpt.transformer_blocks[b].feed_forward.layers[0].weight,
+            params['blocks'][b]['mlp']['c_fc']['w'].T
+        )
+        gpt.transformer_blocks[b].feed_forward.layers[0].bias = assign(
+            gpt.transformer_blocks[b].feed_forward.layers[0].bias,
+            params['blocks'][b]['mlp']['c_fc']['b'].T
+        )
+        gpt.transformer_blocks[b].feed_forward.layers[2].weight = assign(
+            gpt.transformer_blocks[b].feed_forward.layers[2].weight,
+            params['blocks'][b]['mlp']['c_proj']['w'].T
+        )
+        gpt.transformer_blocks[b].feed_forward.layers[2].bias = assign(
+            gpt.transformer_blocks[b].feed_forward.layers[2].bias,
+            params['blocks'][b]['mlp']['c_proj']['b'].T
+        )
+        
+        # 参数管理：Transformer Blocks Pre-Layer Normal
+        gpt.transformer_blocks[b].pre_layer_norm.scale = assign(
+            gpt.transformer_blocks[b].pre_layer_norm.scale,
+            params['blocks'][b]['ln_1']['g']
+        )
+        gpt.transformer_blocks[b].pre_layer_norm.shift = assign(
+            gpt.transformer_blocks[b].pre_layer_norm.shift,
+            params['blocks'][b]['ln_1']['b']
+        )
+        
+        # 参数管理：Transformer Blocks Post-Layer Normal
+        gpt.transformer_blocks[b].post_layer_nrom.scale = assign(
+            gpt.transformer_blocks[b].post_layer_nrom.scale,
+            params['blocks'][b]['ln_2']['g']
+        )
+        gpt.transformer_blocks[b].post_layer_nrom.shift = assign(
+            gpt.transformer_blocks[b].post_layer_nrom.shift,
+            params['blocks'][b]['ln_2']['b']
+        )
+    # GPT最后一层归一化
+    gpt.final_norm.scale = assign(gpt.final_norm.scale, params['g'])
+    gpt.final_norm.shift = assign(gpt.final_norm.shift, params['b'])
+    # GPT线性输出层
+    gpt.out_head.weight = assign(gpt.out_head.weight, params['wte'])
 
 # 加载GPT-2参数
 from gpt_download import download_and_load_gpt2
@@ -424,25 +506,28 @@ model_configs = {
     "gpt2-xl(1558M)":    {"emb_dim": 1600, "n_layers": 48, "n_heads": 25},
 }
 
+torch.manual_seed(123)
+
 # 更新之前使用的GPT_CONFIG_124M
 model_name = "gpt2-small(124M)"
 NEW_CONFIG = GPT_CONFIG_124M.copy()
 NEW_CONFIG.update(model_configs[model_name])
-NEW_CONFIG.update("context_length", 1024) # 原始GPT-2模型使用1024个词元长度进行训练
-NEW_CONFIG.update("qkv_bias", True)
+NEW_CONFIG.update({"context_length": 1024}) # 原始GPT-2模型使用1024个词元长度进行训练
+NEW_CONFIG.update({"qkv_bias": True})
+
+model = GPTModel2(cfg=NEW_CONFIG)
+load_weights_into_gpt(model, params)
+model.to("cuda")
 
 tokenizer = tiktoken.get_encoding("gpt2")
-
-torch.manual_seed(123)
 token_ids = generate(
-    model=GPTModel2(cfg=NEW_CONFIG),
-    idx=text_to_token_ids("Every effort moves you", tokenizer=tokenizer),
-    max_new_tokens=15,
+    model=model,
+    idx=text_to_token_ids("Hello there", tokenizer=tokenizer),
+    max_new_tokens=25,
     context_size=NEW_CONFIG['context_length'],
-    top_k=25,
-    temperature=1.4
+    top_k=50,
+    temperature=1.5
 )
-
 print("Output text:\n", token_ids_to_text(token_ids=token_ids, tokenizer=tokenizer))
     
 # torch.manual_seed(123)
