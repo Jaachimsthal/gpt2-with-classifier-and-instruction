@@ -529,7 +529,7 @@ token_ids = generate(
     temperature=1.5
 )
 print("Output text:\n", token_ids_to_text(token_ids=token_ids, tokenizer=tokenizer))
-    
+
 # torch.manual_seed(123)
 # model = GPTModel2(cfg=GPT_CONFIG_124M)
 
