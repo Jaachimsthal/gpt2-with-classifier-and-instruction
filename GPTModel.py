@@ -69,6 +69,7 @@ class GPTModel2(nn.Module):
         Returns:
             torch.Tensor: 输出
         """
+        in_idx.to("cuda")
         batch_size, seq_len = in_idx.shape
         # 词嵌入(nn.Embeddings)本质上是一种one-hot encoding的更有效的实现，Embeddings对嵌入的词元ID先进行独热编码，随后再全连接层中进行线性变换（W·in_idx）
         # 线性变换并不会改变原本的信息，但Embeddings却可以反向传播学习更新
