@@ -1,3 +1,5 @@
 __pycache__/
 gpt2
+gpt2/
 *.pth
+review_classifier.pth
