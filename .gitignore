@@ -4,3 +4,4 @@ gpt2/
 *.pth
 review_classifier.pth
 *.json
+__pycache__
