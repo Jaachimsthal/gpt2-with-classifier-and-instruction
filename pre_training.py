@@ -215,7 +215,7 @@ print("Validation loss:", valid_loss)
 
 # 训练LLM
 def train_model_simple(
-    mode: nn.Module,
+    model: nn.Module,
     train_loader: DataLoader,
     valid_loader: DataLoader,
     optimizer: torch.optim.Optimizer,

@@ -336,7 +336,6 @@ def generate(model: nn.Module, idx: torch.Tensor, max_new_tokens: int, context_s
         idx_cond = idx[:, -context_size:] # 根据上下文限制切分输入token
         with torch.no_grad():
             logits: torch.Tensor = model(idx_cond)
-            print(logits.shape)
         logits = logits[:, -1, :] # 只获取最后一个token（LLM会针对输入序列的每一个词元生成一组logits向量，对于下一个词预测只需要获取最后一个向量即可）
         if top_k is not None:
             # 使用Top-k采用筛选logits
