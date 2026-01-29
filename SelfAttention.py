@@ -109,8 +109,9 @@ class CausalAttention(nn.Module):
         self.W_value = nn.Linear(d_in, d_out, bias=qkv_bias)
         self.dropout = nn.Dropout(dropout_rate) # attention weight dropout
         self.register_buffer(
-            'mask',
-            torch.triu(torch.ones(context_length, context_length), diagonal=1),
+            name='mask',
+            tensor=torch.triu(torch.ones(context_length, context_length), diagonal=1),
+            persistent=True
         ) # 创建掩码矩阵（0，1元素构成），register_buffer可使缓冲区会与模型一起移动到适当的设备上（CPU或GPU），在训练时无需手动确保张量和模型在同一设备上
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
@@ -199,7 +200,7 @@ batch = torch.stack((inputs, inputs), dim=0) # 合成两个张量到一个张量
 print("Batch Shapes:", batch.shape)
 
 context_length = batch.shape[1]
-ca = CausalAttention(d_in, d_out, context_length, 0.0)
+ca = CausalAttention(d_in, d_out, context_length, 0.2)
 context_vec = ca(batch)
 print("Context Vectors Shape:", context_vec.shape)
 
