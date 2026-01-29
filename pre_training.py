@@ -326,29 +326,29 @@ def generate_and_print_sample(model: GPTModel2, tokenizer: Encoding, device: tor
     print(decoded_text.replace("\n", " "))
     model.train()
 
-torch.manual_seed(123)
-model = GPTModel2(GPT_CONFIG_124M)
-model.to(device=device)
+# torch.manual_seed(123)
+# model = GPTModel2(GPT_CONFIG_124M)
+# model.to(device=device)
 
-optimizer = torch.optim.AdamW(
-    model.parameters(),
-    lr=0.0004,
-    weight_decay=0.1
-)
+# optimizer = torch.optim.AdamW(
+#     model.parameters(),
+#     lr=0.0004,
+#     weight_decay=0.1
+# )
 
-num_epochs = 10
-train_losses, valid_losses, tokens_seen = train_model_simple(
-    model,
-    train_loader,
-    valid_loader,
-    optimizer,
-    device,
-    num_epochs,
-    eval_freq=5,
-    eval_iter=5,
-    start_context="Every effort moves you",
-    tokenizer=tokenizer
-)
+# num_epochs = 10
+# train_losses, valid_losses, tokens_seen = train_model_simple(
+#     model,
+#     train_loader,
+#     valid_loader,
+#     optimizer,
+#     device,
+#     num_epochs,
+#     eval_freq=5,
+#     eval_iter=5,
+#     start_context="Every effort moves you",
+#     tokenizer=tokenizer
+# )
 
 # 绘制图表
 import matplotlib.pyplot as plt
@@ -368,17 +368,17 @@ def plot_losses(epoches_seen, token_seen, train_losses, val_losse):
     fig.tight_layout()
     plt.show()
     
-epochs_tensor = torch.linspace(0, num_epochs, len(train_losses))
-plot_losses(epochs_tensor, tokens_seen, train_losses, valid_losses)
+# epochs_tensor = torch.linspace(0, num_epochs, len(train_losses))
+# plot_losses(epochs_tensor, tokens_seen, train_losses, valid_losses)
 
-model.to("cpu")
-model.eval()
-tokenizer = tiktoken.get_encoding("gpt2")
-token_ids = generate_text_simple(
-    model=model,
-    idx=text_to_token_ids("Every effort moves you", tokenizer=tokenizer),
-    max_new_tokens=25,
-    context_size=GPT_CONFIG_124M['context_length']
-)
+# model.to("cpu")
+# model.eval()
+# tokenizer = tiktoken.get_encoding("gpt2")
+# token_ids = generate_text_simple(
+#     model=model,
+#     idx=text_to_token_ids("Every effort moves you", tokenizer=tokenizer),
+#     max_new_tokens=25,
+#     context_size=GPT_CONFIG_124M['context_length']
+# )
 
-print("Output text:\n", token_ids_to_text(token_ids=token_ids, tokenizer=tokenizer))
+# print("Output text:\n", token_ids_to_text(token_ids=token_ids, tokenizer=tokenizer))
