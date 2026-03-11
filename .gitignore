@@ -5,3 +5,4 @@ gpt2/
 review_classifier.pth
 *.json
 __pycache__
+trading_intent_classification_lora/*
